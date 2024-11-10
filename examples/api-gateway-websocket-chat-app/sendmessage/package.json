@@ -6,6 +6,7 @@
   "author": "SAM CLI",
   "license": "MIT",
   "dependencies": {
-    "aws-sdk": "^2.655.0"
+    "aws-sdk": "^2.655.0",
+    "send-message": "file:"
   }
 }
