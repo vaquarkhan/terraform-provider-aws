@@ -158,6 +158,39 @@ func TestAccGlueSecurityConfiguration_S3EncryptionS3EncryptionMode_sseKMS(t *tes
 	})
 }
 
+func TestAccGlueSecurityConfiguration_DataQualityEncryptionMode_sseKMS(t *testing.T) {
+	ctx := acctest.Context(t)
+	var securityConfiguration awstypes.SecurityConfiguration
+
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	kmsKeyResourceName := "aws_kms_key.test"
+	resourceName := "aws_glue_security_configuration.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(ctx, t) },
+		ErrorCheck:               acctest.ErrorCheck(t, names.GlueServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckSecurityConfigurationDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSecurityConfigurationConfig_dataQualityEncryptionModeSSEKMS(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSecurityConfigurationExists(ctx, resourceName, &securityConfiguration),
+					resource.TestCheckResourceAttr(resourceName, "encryption_configuration.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "encryption_configuration.0.data_quality_encryption.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "encryption_configuration.0.data_quality_encryption.0.data_quality_encryption_mode", "SSE-KMS"),
+					resource.TestCheckResourceAttrPair(resourceName, "encryption_configuration.0.data_quality_encryption.0.kms_key_arn", kmsKeyResourceName, names.AttrARN),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func TestAccGlueSecurityConfiguration_S3EncryptionS3EncryptionMode_sseS3(t *testing.T) {
 	ctx := acctest.Context(t)
 	var securityConfiguration awstypes.SecurityConfiguration
@@ -330,6 +363,13 @@ resource "aws_glue_security_configuration" "test" {
 `, rName)
 }
 
+func testAccSecurityConfigurationConfig_dataQualityEncryptionModeSSEKMS(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_kms_key" "test" {
+  deletion_window_in_days = 7
+}
+
+
 func testAccSecurityConfigurationConfig_s3EncryptionModeSSEKMS(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_kms_key" "test" {
@@ -352,6 +392,12 @@ resource "aws_glue_security_configuration" "test" {
       kms_key_arn        = aws_kms_key.test.arn
       s3_encryption_mode = "SSE-KMS"
     }
+	
+	data_quality_encryption {
+      data_quality_encryption_mode = "SSE-KMS"
+      kms_key_arn             = aws_kms_key.test.arn
+    }
+
   }
 }
 `, rName)

@@ -104,6 +104,31 @@ func ResourceSecurityConfiguration() *schema.Resource {
 								},
 							},
 						},
+						//
+						"data_quality_encryption": {
+							Type:     schema.TypeList,
+							Required: true,
+							ForceNew: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"data_quality_encryption_mode": {
+										Type:             schema.TypeString,
+										Optional:         true,
+										ForceNew:         true,
+										Default:          awstypes.DataQualityEncryptionModeDisabled,
+										ValidateDiagFunc: enum.Validate[awstypes.DataQualityEncryptionMode](),
+									},
+									names.AttrKMSKeyARN: {
+										Type:     schema.TypeString,
+										Optional: true,
+										ForceNew: true,
+									},
+								},
+							},
+						},
+						//
+
 					},
 				},
 			},
@@ -231,6 +256,7 @@ func expandEncryptionConfiguration(l []interface{}) *awstypes.EncryptionConfigur
 		CloudWatchEncryption:   expandCloudWatchEncryption(m["cloudwatch_encryption"].([]interface{})),
 		JobBookmarksEncryption: expandJobBookmarksEncryption(m["job_bookmarks_encryption"].([]interface{})),
 		S3Encryption:           expandS3Encryptions(m["s3_encryption"].([]interface{})),
+		DataQualityEncryption:  expandDataQualityEncryption(m["data_quality_encryption"].([]interface{})),
 	}
 
 	return encryptionConfiguration
@@ -292,6 +318,24 @@ func flattenCloudWatchEncryption(cloudwatchEncryption *awstypes.CloudWatchEncryp
 	return []interface{}{m}
 }
 
+func expandDataQualityEncryption(l []interface{}) *awstypes.DataQualityEncryption {
+	if len(l) == 0 || l[0] == nil {
+		return nil
+	}
+
+	m := l[0].(map[string]interface{})
+
+	dataQualityEncryption := &awstypes.DataQualityEncryption{
+		DataQualityEncryptionMode: awstypes.DataQualityEncryptionMode(m["data_quality_encryption_mode"].(string)),
+	}
+
+	if v, ok := m[names.AttrKMSKeyARN]; ok && v.(string) != "" {
+		dataQualityEncryption.KmsKeyArn = aws.String(v.(string))
+	}
+
+	return dataQualityEncryption
+}
+
 func flattenEncryptionConfiguration(encryptionConfiguration *awstypes.EncryptionConfiguration) []interface{} {
 	if encryptionConfiguration == nil {
 		return []interface{}{}
@@ -301,6 +345,7 @@ func flattenEncryptionConfiguration(encryptionConfiguration *awstypes.Encryption
 		"cloudwatch_encryption":    flattenCloudWatchEncryption(encryptionConfiguration.CloudWatchEncryption),
 		"job_bookmarks_encryption": flattenJobBookmarksEncryption(encryptionConfiguration.JobBookmarksEncryption),
 		"s3_encryption":            flattenS3Encryptions(encryptionConfiguration.S3Encryption),
+		"data_quality_encryption":  flattenDataQualityEncryption(encryptionConfiguration.DataQualityEncryption),
 	}
 
 	return []interface{}{m}
@@ -336,4 +381,17 @@ func flattenS3Encryption(s3Encryption awstypes.S3Encryption) map[string]interfac
 	}
 
 	return m
+}
+
+func flattenDataQualityEncryption(dataQualityEncryption *awstypes.DataQualityEncryption) []interface{} {
+	if dataQualityEncryption == nil {
+		return []interface{}{}
+	}
+
+	m := map[string]interface{}{
+		"data_quality_encryption_mode": string(dataQualityEncryption.DataQualityEncryptionMode),
+		names.AttrKMSKeyARN:            aws.ToString(dataQualityEncryption.KmsKeyArn),
+	}
+
+	return []interface{}{m}
 }
